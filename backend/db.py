@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
 from pathlib import Path
 
@@ -9,7 +10,7 @@ from models import DOMAIN, PRODUCT_NAME, SKELETON, SUB_DIRECTION, USERS
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "data"
-DB_PATH = DATA / "app.db"
+DB_PATH = Path(os.environ.get("GRAYROLL_DB", str(DATA / "app.db")))
 FIXTURES = ROOT / "fixtures"
 FRONTEND = ROOT / "frontend"
 
@@ -23,9 +24,11 @@ PRODUCT_META = {
 
 def connect() -> sqlite3.Connection:
     DATA.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(DB_PATH, check_same_thread=False, timeout=5.0)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys=ON")
+    conn.execute("PRAGMA busy_timeout=5000")
     return conn
 
 
@@ -181,6 +184,44 @@ CREATE TABLE IF NOT EXISTS remote_push_stub(
 CREATE TABLE IF NOT EXISTS experiment_bridge_stub(
   id INTEGER PRIMARY KEY,
   note TEXT NOT NULL DEFAULT '实验平台桥接空桩未接通'
+);
+CREATE TABLE IF NOT EXISTS stub_drills(
+  id INTEGER PRIMARY KEY,
+  note TEXT NOT NULL DEFAULT '',
+  path TEXT NOT NULL,
+  official INTEGER NOT NULL DEFAULT 1,
+  status TEXT NOT NULL,
+  actor TEXT NOT NULL,
+  created_at REAL NOT NULL
+);
+CREATE TABLE IF NOT EXISTS seat_unlock_shadows(
+  id INTEGER PRIMARY KEY,
+  lock_key TEXT NOT NULL,
+  holder TEXT NOT NULL,
+  drill_note TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'open',
+  created_by TEXT NOT NULL,
+  created_at REAL NOT NULL,
+  applied_at REAL
+);
+CREATE TABLE IF NOT EXISTS stub_real_pushes(
+  id INTEGER PRIMARY KEY,
+  note TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL,
+  actor TEXT NOT NULL,
+  created_at REAL NOT NULL,
+  finished_at REAL
+);
+CREATE TABLE IF NOT EXISTS seat_lock_writeoffs(
+  id INTEGER PRIMARY KEY,
+  lock_key TEXT NOT NULL,
+  holder TEXT NOT NULL,
+  source TEXT NOT NULL,
+  matched INTEGER NOT NULL DEFAULT 1,
+  drill_id INTEGER,
+  detail TEXT NOT NULL DEFAULT '',
+  actor TEXT NOT NULL,
+  created_at REAL NOT NULL
 );
 """
 

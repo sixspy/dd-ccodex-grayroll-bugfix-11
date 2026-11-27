@@ -109,8 +109,9 @@ def publish(body: PublishIn, authorization: str | None = Header(default=None)):
             conn.commit()
             return {"mode": "official", "id": rid, "version": ver, "path": describe_path("release", False)}
         finally:
-            # BUGFIX-11 埋雷：发布成功路径跳过 release 锁
-            # release(conn, key, user["username"])
+            # BUGFIX-11 修复：发布成功/失败都必须释放 release 锁，
+            # 否则锁行泄漏会让同 flag/env 的后续发布全部撞 409。
+            release(conn, key, user["username"])
             conn.commit()
 
 
